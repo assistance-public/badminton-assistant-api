@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,11 +7,75 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Post model represents individual blog posts
-model Post {
-  id        Int       @id @default(autoincrement())
-  title     String
-  content   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+model tbl_attendance {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  match_id       Int
+  attend_status  String    @db.VarChar(100)
+  payment_status String    @db.VarChar(100)
+  code           String    @db.VarChar(100)
+  total_amount   Int?
+  created_at     DateTime  @db.Timestamptz(6)
+  created_by     String    @db.VarChar(255)
+  updated_at     DateTime? @db.Timestamptz(6)
+  updated_by     String?   @db.VarChar(255)
+  tbl_match      tbl_match @relation(fields: [match_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_match_to_tbl_attendance")
+  tbl_user       tbl_user  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_user_to_tbl_attendance")
+}
+
+model tbl_match {
+  id                    Int                    @id @default(autoincrement())
+  start_date            DateTime               @db.Timestamptz(6)
+  host_user             Int
+  status                String                 @db.VarChar(100)
+  total_cost            Int?
+  average_cost_per_user Int?
+  description           String?                @db.VarChar(255)
+  created_at            DateTime               @db.Timestamptz(6)
+  created_by            String                 @db.VarChar(255)
+  updated_at            DateTime?              @db.Timestamptz(6)
+  updated_by            String?                @db.VarChar(255)
+  tbl_attendance        tbl_attendance[]
+  tbl_user              tbl_user               @relation(fields: [host_user], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_user_to_tbl_match")
+  tbl_personal_expense  tbl_personal_expense[]
+}
+
+model tbl_personal_expense {
+  id          Int         @id @default(autoincrement())
+  user_id     Int
+  match_id    Int
+  product_id  Int
+  quantity    Int
+  created_at  DateTime    @db.Timestamptz(6)
+  created_by  String      @db.VarChar(255)
+  updated_at  DateTime?   @db.Timestamptz(6)
+  updated_by  String?     @db.VarChar(255)
+  tbl_match   tbl_match   @relation(fields: [match_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_match_to_tbl_personal_expense")
+  tbl_product tbl_product @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_product_to_tbl_personal_expense")
+  tbl_user    tbl_user    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_user_to_tbl_personal_expense")
+}
+
+model tbl_product {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @db.VarChar(255)
+  amount               Int
+  created_at           DateTime               @db.Timestamptz(6)
+  created_by           String                 @db.VarChar(255)
+  updated_at           DateTime?              @db.Timestamptz(6)
+  updated_by           String?                @db.VarChar(255)
+  tbl_personal_expense tbl_personal_expense[]
+}
+
+model tbl_user {
+  id                   Int                    @id @default(autoincrement())
+  email                String                 @db.VarChar(100)
+  name                 String                 @db.VarChar(100)
+  params               Json?
+  created_at           DateTime               @db.Timestamptz(6)
+  created_by           String                 @db.VarChar(255)
+  updated_at           DateTime?              @db.Timestamptz(6)
+  updated_by           String?                @db.VarChar(255)
+  tbl_attendance       tbl_attendance[]
+  tbl_match            tbl_match[]
+  tbl_personal_expense tbl_personal_expense[]
 }
