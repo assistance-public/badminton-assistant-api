@@ -22,9 +22,9 @@ app.post("/post", async (req, res) => {
         .json({ message: "Please input Title and Content" });
     }
 
-    const blog = await prisma.post.create({
-      data: { title, content },
-    });
+    // const blog = await prisma.post.create({
+    //   data: { title, content },
+    // });
 
     return res
       .status(201)
@@ -37,7 +37,7 @@ app.post("/post", async (req, res) => {
 // Get all blogs
 app.get("/posts", async (req, res) => {
   try {
-    const blogs = await prisma.post.findMany();
+    // const blogs = await prisma.post.findMany();
     return res.status(201).json({ data: blogs.length, blogs });
   } catch (error) {
     return res.status(500).json({ message: "Error fetching blogs" });
@@ -48,14 +48,14 @@ app.get("/posts", async (req, res) => {
 app.get("/get", async (req, res) => {
     const { title } = req.query;
     try {
-      const blog = await prisma.post.findFirst({
-        where: { title }
-      });
-      if (blog) {
-        return res.status(200).json(blog);
-      } else {
-        return res.status(404).json({ message: "Blog not found" });
-      }
+      // const blog = await prisma.post.findFirst({
+      //   where: { title }
+      // });
+      // if (blog) {
+      //   return res.status(200).json(blog);
+      // } else {
+      //   return res.status(404).json({ message: "Blog not found" });
+      // }
     } catch (error) {
       console.log(error);
       return res.status(500).json({ message: "Error fetching blog" });
@@ -68,10 +68,10 @@ app.put("/post/:id", async (req, res) => {
   const { id } = req.params;
   const { title, content } = req.body;
   try {
-    const updatedBlog = await prisma.post.update({
-      where: { id: parseInt(id) },
-      data: { title, content },
-    });
+    // const updatedBlog = await prisma.post.update({
+    //   where: { id: parseInt(id) },
+    //   data: { title, content },
+    // });
     return res.json({
       message: "Blog updated successfully",
       data: updatedBlog,
@@ -86,9 +86,9 @@ app.put("/post/:id", async (req, res) => {
 app.delete("/post/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    await prisma.post.delete({
-      where: { id: parseInt(id) },
-    });
+    // await prisma.post.delete({
+    //   where: { id: parseInt(id) },
+    // });
     return res.json({ message: "Blog deleted successfully" });
   } catch (error) {
     return res.status(500).json({ message: "Error deleting blog" });
