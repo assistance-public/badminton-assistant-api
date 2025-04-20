@@ -12,7 +12,12 @@ import { auth } from '../middlewares/auth.js';
 const prisma = new PrismaClient();
 const router = Router();
 
-router.get('/match', auth.required, async (req, res, next) => {
+router.get('/attendance', auth.required, async (req, res, next) => {
+  const status = req.body.status;
+  if (!status) {
+    return res.status(400).send('invalid data');
+  }
+  
   console.log(req.user, req.extendParams);
   const matchId = _.get(req.extendParams, 'matchId', 0);
   const match = await prisma.tbl_match.findFirst({

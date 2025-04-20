@@ -12,21 +12,19 @@ import { auth } from '../middlewares/auth.js';
 const prisma = new PrismaClient();
 const router = Router();
 
-router.get('/match', auth.required, async (req, res, next) => {
+router.get('/user', auth.required, async (req, res, next) => {
   console.log(req.user, req.extendParams);
-  const matchId = _.get(req.extendParams, 'matchId', 0);
-  const match = await prisma.tbl_match.findFirst({
+  const userId = _.get(req.user, 'id', 0);
+  const user = await prisma.tbl_user.findFirst({
     where: {
-      id: Number(matchId),
-    },
-    include: {
-      tbl_user: true, // 👈 Join sang bảng user
+      id: Number(userId),
     },
   });
-  if (!matchId) {
-    return res.status(404).send('match not found');
+  if (!user) {
+    res.status(404).send('user not found');
+    return;
   }
-  return res.json({ match });
+  return res.json({ user });
 });
 
 export default router;
