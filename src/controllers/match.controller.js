@@ -20,13 +20,22 @@ router.get('/match', auth.required, async (req, res, next) => {
       id: Number(matchId),
     },
     include: {
-      tbl_user: true, // 👈 Join sang bảng user
+      tbl_user: true,
     },
   });
   if (!matchId) {
     return res.status(404).send('match not found');
   }
   return res.json({ match });
+});
+
+router.get('/match/list', auth.optional, async (req, res, next) => {
+  const matches = await prisma.tbl_match.findMany({
+    include: {
+      tbl_user: true,
+    },
+  });
+  return res.json({ matches });
 });
 
 export default router;
