@@ -37,7 +37,7 @@ router.post('/attendance', auth.required, async (req, res, next) => {
         attend_status: status,
         created_at: new Date(),
         created_by: 'system',
-        code: generateCode(), // unique, dùng cho payment
+        code: Math.round(+new Date() / 1000), // unique, dùng cho payment
         payment_status: ENUM_PAYMENT_STATUS.PENDING,
         total_amount: 0,
         tbl_user: {
