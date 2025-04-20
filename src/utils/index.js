@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { customAlphabet } from 'nanoid';
 
 export const genToken = (payload) => {
   const secretKey = process.env.SECRET_KEY;
@@ -16,4 +17,13 @@ export const decodeToken = (token) => {
     console.error('Invalid token:', err.message);
     throw new Error(err);
   }
+};
+
+export const generateCode = () => {
+  const alphabet =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const generateCode = customAlphabet(alphabet, 10); // 10 là độ dài mã
+
+  const code = generateCode();
+  return code;
 };
