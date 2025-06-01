@@ -5,6 +5,46 @@ import { genToken, getRandomNumberByLength } from '../utils/index.js';
 import { auth } from '../middlewares/auth.js';
 import { ENUM_PAYMENT_STATUS } from '../constants/index.js';
 import PayOS from '@payos/node';
+import axios from 'axios';
+
+/**
+ * Sends an email using the Brevo API.
+ * @param {string} email - The recipient's email address.
+ * @param {string} subject - The subject of the email.
+ * @param {string} link - The link to include in the email.
+ * @param {string} templateId - The template ID for the email.
+ */
+const sendEmail = async (email, subject, link, templateId) => {
+  const emailData = {
+    sender: {
+      email: 'no-reply@hieunt.org',
+    },
+    subject: subject,
+    templateId: templateId,
+    to: [
+      {
+        email: email,
+      },
+    ],
+    params: {
+      url: link,
+    },
+  };
+
+  try {
+    await axios.post('https://api.brevo.com/v3/smtp/email', emailData, {
+      headers: {
+        accept: 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+    });
+    console.log(`Email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending email to', email, ':', error);
+    throw error; // Re-throw the error to handle it in the calling function
+  }
+};
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -40,7 +80,7 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
   }
   // send-mail
   await Promise.all(
-    users.map((user) => {
+    users.map(async (user) => {
       const payload = {
         userId: user.id,
         extendParams: {
@@ -49,9 +89,13 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
       };
       const token = genToken(payload);
       const webUrl = `${process.env.WEB_URL_INVITE_MATCH}?token=${token}`;
-      // TODO: process send mail to each user
-
       console.log(webUrl);
+
+      try {
+        await sendEmail(user.email, 'Vote lịch đánh cầu đê!', webUrl, 7);
+      } catch (error) {
+        console.error('Error sending email to', user.email, ':', error);
+      }
     }),
   );
   return res.json({ success: true });
@@ -174,6 +218,7 @@ router.post(
       }
 
       console.log(paymentLink);
+
       await prisma.tbl_attendance.update({
         where: {
           id: attendance.id,
@@ -191,7 +236,21 @@ router.post(
       //#endregion
 
       //#region send mail
-      
+      try {
+        await sendEmail(
+          attendance.tbl_match.email,
+          'Trả tiền cầu đê!',
+          paymentLink,
+          8,
+        );
+      } catch (error) {
+        console.error(
+          'Error sending email to',
+          attendance.tbl_match.email,
+          ':',
+          error,
+        );
+      }
 
       //#endregion
 
