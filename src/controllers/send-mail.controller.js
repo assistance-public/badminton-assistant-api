@@ -6,6 +6,7 @@ import { auth } from '../middlewares/auth.js';
 import { ENUM_PAYMENT_STATUS } from '../constants/index.js';
 import PayOS from '@payos/node';
 import axios from 'axios';
+import dayjs from 'dayjs';
 
 /**
  * Sends an email using the Brevo API.
@@ -14,7 +15,7 @@ import axios from 'axios';
  * @param {string} link - The link to include in the email.
  * @param {string} templateId - The template ID for the email.
  */
-const sendEmail = async (email, subject, link, templateId) => {
+const sendEmail = async ({ email, subject, params, templateId }) => {
   const emailData = {
     sender: {
       email: 'no-reply@hieunt.org',
@@ -26,9 +27,7 @@ const sendEmail = async (email, subject, link, templateId) => {
         email: email,
       },
     ],
-    params: {
-      url: link,
-    },
+    params: params,
   };
 
   try {
@@ -56,7 +55,7 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
   }
   // find active match
   const now = new Date();
-  const activeMatchById = await prisma.tbl_match.findFirst({
+  const activeMatch = await prisma.tbl_match.findFirst({
     where: {
       start_date: {
         gte: now, // start_date >= now
@@ -66,7 +65,7 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
       },
     },
   });
-  if (!activeMatchById) {
+  if (!activeMatch) {
     return res.status(400).send('Chỉ được gửi mail khi trận đấu chưa bắt đầu');
   }
 
@@ -92,7 +91,17 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
       console.log(webUrl);
 
       try {
-        await sendEmail(user.email, 'Vote lịch đánh cầu đê!', webUrl, 7);
+        await sendEmail({
+          email: user.email,
+          params: {
+            userName: user.name,
+            address: activeMatch.location,
+            startDate: dayjs(activeMatch.start_date).format('dddd, DD/MM/YYYY HH:mm A'),
+            link: webUrl,
+          },
+          templateId: process.env.TEMPLATE_ID_INVITE_MATCH,
+          subject: `🔥 ${user.name} ơi, Lotus Badminton gọi tên bạn ra sân rồi đóooo 🏸💥`
+        });
       } catch (error) {
         console.error('Error sending email to', user.email, ':', error);
       }
@@ -237,12 +246,11 @@ router.post(
 
       //#region send mail
       try {
-        await sendEmail(
-          attendance.tbl_match.email,
-          'Trả tiền cầu đê!',
-          paymentLink,
-          8,
-        );
+        await sendEmail({
+          email: attendance.tbl_match.email,
+          params: {},
+          templateId: 8,
+        });
       } catch (error) {
         console.error(
           'Error sending email to',
