@@ -36,3 +36,12 @@ export const getRandomNumberByLength = (length = 6) => {
 
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
+
+export const numberWithCommas = (value = '', comma = ',') => {
+  if (!Number(value)) return value;
+  return value
+    ? String(
+        Number.isInteger(+value) ? +value : Number(value).toFixed(2),
+      ).replace(/\B(?=(\d{3})+(?!\d))/g, comma)
+    : value;
+};
