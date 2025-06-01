@@ -9,7 +9,10 @@ import { PrismaClient } from '@prisma/client';
 import _ from 'lodash';
 import { auth } from '../middlewares/auth.js';
 import { nanoid } from 'nanoid';
-import { ENUM_PAYMENT_STATUS } from '../constants/index.js';
+import {
+  ENUM_PAYMENT_STATUS,
+  ENUM_STATUS_ATTENDANCE,
+} from '../constants/index.js';
 import { generateCode } from '../utils/index.js';
 
 const prisma = new PrismaClient();
@@ -61,6 +64,24 @@ router.post('/attendance', auth.required, async (req, res, next) => {
     });
   }
   return res.json({ success: true });
+});
+
+router.get('/attendance', auth.optional, async (req, res, next) => {
+  console.log(req.query);
+  const { matchId } = req.query;
+  if (!matchId) {
+    return res.status(401).send('invalid data');
+  }
+  const attendances = await prisma.tbl_attendance.findMany({
+    where: {
+      match_id: Number(matchId),
+      attend_status: ENUM_STATUS_ATTENDANCE.ACCEPTED,
+    },
+    include: {
+      tbl_user: true,
+    },
+  });
+  return res.json(attendances);
 });
 
 export default router;
