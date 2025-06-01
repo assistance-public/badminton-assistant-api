@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import _ from 'lodash';
-import { genToken } from '../utils/index.js';
+import { genToken, getRandomNumberByLength } from '../utils/index.js';
 import { auth } from '../middlewares/auth.js';
 import { ENUM_PAYMENT_STATUS } from '../constants/index.js';
 import PayOS from '@payos/node';
@@ -27,7 +27,7 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
     },
   });
   if (!activeMatchById) {
-    return res.status(400).send('active match not found');
+    return res.status(400).send('Chỉ được gửi mail khi trận đấu chưa bắt đầu');
   }
 
   const users = await prisma.tbl_user.findMany({
@@ -58,12 +58,12 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
 });
 
 router.post(
-  '/send-mail/payment/:matchId/:userId',
+  '/send-mail/payment/:matchId',
   auth.required,
   async (req, res, next) => {
     try {
       const matchId = req.params.matchId;
-      const userId = req.params.userId;
+      const userId = req.user.id;
       if (!matchId || !userId) {
         return res.json(400).send('invalid data');
       }
@@ -131,26 +131,74 @@ router.post(
         });
       }
 
-      // process send QR payment
+      //#region gen QR
       const payos = new PayOS(
         process.env.PAYOS_CLIENT_ID,
         process.env.PAYOS_API_KEY,
         process.env.PAYOS_CHECKSUM_KEY,
         process.env.PAYOS_PARTNER_CODE,
       );
-      const requestData = {
-        orderCode: 5643,
-        amount: totalAmount,
-        description: 'badminton lotus cost',
-        cancelUrl: 'https://hieunt.org',
-        returnUrl: 'https://hieunt.org',
-      };
-      const paymentLink = await payos.createPaymentLink(requestData);
+      let processGenOrderCode = true;
+      let countError = 0;
+      const MAX_ERROR_GEN_ORDER_CODE = 5;
+      let paymentLink = _.get(attendance, 'params.paymentLink');
+
+      if (!paymentLink) {
+        while (processGenOrderCode) {
+          try {
+            const newOrderCode = getRandomNumberByLength();
+            const requestData = {
+              orderCode: newOrderCode,
+              amount: totalAmount,
+              description: 'badminton lotus cost',
+              cancelUrl: 'https://hieunt.org',
+              returnUrl: 'https://hieunt.org',
+            };
+            paymentLink = await payos.createPaymentLink(requestData);
+            console.log(paymentLink);
+
+            processGenOrderCode = false;
+          } catch (error) {
+            ++countError;
+            if (countError == MAX_ERROR_GEN_ORDER_CODE) {
+              processGenOrderCode = false;
+              throw new Error(error);
+            }
+            console.log(error);
+          }
+        }
+      }
+
+      if (_.isEmpty(paymentLink)) {
+        throw new Error('Không tạo được paymentLink');
+      }
+
       console.log(paymentLink);
+      await prisma.tbl_attendance.update({
+        where: {
+          id: attendance.id,
+        },
+        data: {
+          total_amount: Number(totalAmount),
+          params: {
+            paymentLink,
+          },
+          code: paymentLink?.orderCode,
+          updated_at: new Date(),
+          updated_by: 'system',
+        },
+      });
+      //#endregion
+
+      //#region send mail
+      
+
+      //#endregion
+
       return res.json({ success: true });
     } catch (error) {
       next(error);
-      return res.json({success: false});
+      return res.json({ success: false });
     }
   },
 );

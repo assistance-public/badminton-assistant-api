@@ -19,6 +19,7 @@ model tbl_attendance {
   created_by     String    @db.VarChar(255)
   updated_at     DateTime? @db.Timestamptz(6)
   updated_by     String?   @db.VarChar(255)
+  params         Json?
   tbl_match      tbl_match @relation(fields: [match_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_match_to_tbl_attendance")
   tbl_user       tbl_user  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tbl_user_to_tbl_attendance")
 }
