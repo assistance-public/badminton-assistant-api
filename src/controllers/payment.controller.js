@@ -1,15 +1,15 @@
-/**
- * Các api dùng để handle trận đấu
- * 1. Tạo 1 trận đấu (pending)
- * 2. Gửi lời mời tham gia trận đấu -> send mail chứa 1 token
- * 3. Xác nhận lời mời (chấp nhận, huỷ)
- */
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import _ from 'lodash';
 import { auth } from '../middlewares/auth.js';
 import PayOS from '@payos/node';
 import { ENUM_PAYMENT_STATUS } from '../constants/index.js';
+import { sendEmail } from './send-mail.controller.js';
+import {
+  genToken,
+  getRandomNumberByLength,
+  numberWithCommas,
+} from '../utils/index.js';
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -38,6 +38,10 @@ router.post('/payos/webhook', auth.required, async (req, res, next) => {
     where: {
       code: Number(orderCode),
     },
+    include: {
+      tbl_user: true,
+      tbl_match: true,
+    },
   });
   if (!attendance) {
     return res.json({ success: false });
@@ -53,7 +57,39 @@ router.post('/payos/webhook', auth.required, async (req, res, next) => {
       updated_by: 'payos',
     },
   });
-  // TODO: send mail to hostUser, attendance
+
+  await sendEmail({
+    email: attendance.tbl_user.email,
+    subject: `Đã thanh toán tiền cầu lông ${numberWithCommas(
+      paymentData.amount,
+    )} thành công`,
+    templateId: process.env.TEMPLATE_ID_THANK_YOU_PAYMENT,
+    params: {
+      userName: attendance.tbl_user.name,
+      amountPaid: numberWithCommas(paymentData.amount),
+    },
+  });
+
+  const hostUser = await prisma.tbl_user.findFirst({
+    where: {
+      id: attendance.tbl_match.host_user,
+    },
+  });
+
+  await sendEmail({
+    email: hostUser.email,
+    subject: `${attendance.tbl_user.mail}(${
+      attendance.tbl_user.name
+    }) Đã thanh toán tiền cầu lông ${numberWithCommas(
+      paymentData.amount,
+    )} thành công`,
+    templateId: process.env.TEMPLATE_ID_NOTI_PAYMENT,
+    params: {
+      userName: attendance.tbl_user.name,
+      amountPaid: numberWithCommas(paymentData.amount),
+    },
+  });
+
   return res.json({ success: true });
 });
 

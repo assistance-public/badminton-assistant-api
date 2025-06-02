@@ -26,7 +26,7 @@ dayjs.locale('vi');
  * @param {string} link - The link to include in the email.
  * @param {string} templateId - The template ID for the email.
  */
-const sendEmail = async ({ email, subject, params, templateId }) => {
+export const sendEmail = async ({ email, subject, params, templateId }) => {
   const emailData = {
     // sender: {
     //   email: 'no-reply@hieunt.org',
@@ -68,6 +68,7 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
   const now = new Date();
   const activeMatch = await prisma.tbl_match.findFirst({
     where: {
+      match_id: matchId,
       start_date: {
         gte: now, // start_date >= now
       },
@@ -91,37 +92,53 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
   // send-mail
   await Promise.all(
     users.map(async (user) => {
-      const payload = {
-        userId: user.id,
-        extendParams: {
-          matchId,
-        },
-      };
-      const token = genToken(payload);
-      const webUrl = `${process.env.WEB_URL_INVITE_MATCH}?token=${token}`;
-      console.log(webUrl);
-
-      try {
-        await sendEmail({
-          email: user.email,
-          params: {
-            userName: user.name,
-            address: activeMatch.location,
-            startDate: dayjs(activeMatch.start_date).format(
-              'dddd, DD/MM/YYYY HH:mm A',
-            ),
-            link: webUrl,
-          },
-          templateId: process.env.TEMPLATE_ID_INVITE_MATCH,
-          subject: `🔥 ${user.name} ơi, Lotus Badminton gọi tên bạn ra sân rồi đóooo 🏸💥`,
-        });
-      } catch (error) {
-        console.error('Error sending email to', user.email, ':', error);
-      }
+      await handleSendMailInviteMatchToUser({ user, match: activeMatch });
     }),
   );
   return res.json({ success: true });
 });
+
+router.post(
+  '/send-mail/invite-match/:matchId/:userId',
+  auth.required,
+  async (req, res, next) => {
+    const matchId = req.params.matchId;
+    const userId = req.params.userId;
+    if (!matchId || !userId) {
+      return res.status(400).send('invalid data');
+    }
+
+    const activeMatch = await prisma.tbl_match.findFirst({
+      where: {
+        match_id: matchId,
+        start_date: {
+          gte: now, // start_date >= now
+        },
+        end_date: {
+          gte: now, // end_date >= now
+        },
+      },
+    });
+    if (!activeMatch) {
+      return res
+        .status(400)
+        .send('Chỉ được gửi mail khi trận đấu chưa bắt đầu');
+    }
+    const user = await prisma.tbl_user.findFirst({
+      where: {
+        status: 'activated',
+        id: Number(userId),
+      },
+    });
+
+    if (!user) {
+      return res.status(400).send('user not found');
+    }
+    await handleSendMailInviteMatchToUser({ user, match: activeMatch });
+
+    return res.json({ success: true });
+  },
+);
 
 router.post(
   '/send-mail/payment/:matchId',
@@ -167,6 +184,34 @@ router.post(
     }
   },
 );
+
+const handleSendMailInviteMatchToUser = async ({ user, match }) => {
+  const payload = {
+    userId: user.id,
+    extendParams: {
+      matchId: match.id,
+    },
+  };
+  const token = genToken(payload);
+  const webUrl = `${process.env.WEB_URL_INVITE_MATCH}?token=${token}`;
+  console.log(webUrl);
+
+  try {
+    await sendEmail({
+      email: user.email,
+      params: {
+        userName: user.name,
+        address: match.location,
+        startDate: dayjs(match.start_date).format('dddd, DD/MM/YYYY HH:mm A'),
+        link: webUrl,
+      },
+      templateId: process.env.TEMPLATE_ID_INVITE_MATCH,
+      subject: `🔥 ${user.name} ơi, Lotus Badminton gọi tên bạn ra sân rồi đóooo 🏸💥`,
+    });
+  } catch (error) {
+    console.error('Error sending email to', user.email, ':', error);
+  }
+};
 
 const handleProcessPaymentPerAttendance = async ({
   attendance,
