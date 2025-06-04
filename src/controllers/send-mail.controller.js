@@ -100,7 +100,6 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
 
 router.post(
   '/send-mail/invite-match/:matchId/:userId',
-  auth.required,
   async (req, res, next) => {
     const matchId = req.params.matchId;
     const userId = req.params.userId;
