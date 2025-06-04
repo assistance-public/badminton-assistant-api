@@ -107,6 +107,8 @@ router.post(
       return res.status(400).send('invalid data');
     }
 
+    const now = new Date();
+
     const activeMatch = await prisma.tbl_match.findFirst({
       where: {
         match_id: matchId,
