@@ -68,7 +68,7 @@ router.post('/send-mail/invite-match/:matchId', async (req, res, next) => {
   const now = new Date();
   const activeMatch = await prisma.tbl_match.findFirst({
     where: {
-      match_id: matchId,
+      id: matchId,
       start_date: {
         gte: now, // start_date >= now
       },
@@ -111,7 +111,7 @@ router.post(
 
     const activeMatch = await prisma.tbl_match.findFirst({
       where: {
-        match_id: matchId,
+        id: matchId,
         start_date: {
           gte: now, // start_date >= now
         },
